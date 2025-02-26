@@ -1,35 +1,29 @@
 package main
 
 import (
-	"fmt"
-	// "path/filepath"
+	"path/filepath"
 
 	backend "github.com/eddyvy/gymcatch/backend"
-	// "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	godotenv.Load()
 
-	// sessions := backend.NewSessions()
+	backend.InitSessions()
 
-	sId, csrfToken, err := backend.GetCreds()
-	if err != nil {
-		panic(err)
-	}
+	app := fiber.New()
 
-	fmt.Println("Session ID:", sId)
-	fmt.Println("CSRF Token:", csrfToken)
+	// Handle login
+	app.Post("/api/auth", backend.HandleAuth)
 
-	// app := fiber.New()
+	api := app.Group("/api", backend.SessionMiddleware)
+	api.Get("/mega_events", backend.HandleMegaEvents)
 
-	// // Handle login
-	// app.Post("/api/auth", backend.HandleAuth(sessions))
+	// Serve static files from the frontend build directory
+	app.Static("/", filepath.Join("dist"))
 
-	// // Serve static files from the frontend build directory
-	// app.Static("/", filepath.Join("dist"))
-
-	// // Start the server on port 3000
-	// app.Listen(":3000")
+	// Start the server on port 3000
+	app.Listen(":3000")
 }

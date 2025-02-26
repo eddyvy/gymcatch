@@ -1,37 +1,41 @@
 package backend
 
-import "sync"
+import (
+	"sync"
+)
 
 // Sessions struct to store session data
-type Sessions struct {
+type SessionsManager struct {
 	mu       sync.RWMutex
-	sessions map[string]string
+	sessions map[string]*MegaCreds
 }
 
+var Sessions *SessionsManager
+
 // NewSessions creates a new Sessions instance
-func NewSessions() *Sessions {
-	return &Sessions{
-		sessions: make(map[string]string),
+func InitSessions() {
+	Sessions = &SessionsManager{
+		sessions: make(map[string]*MegaCreds),
 	}
 }
 
 // Set adds or updates a session
-func (s *Sessions) Set(sessionID, email string) {
+func (s *SessionsManager) Set(sessionID string, creds *MegaCreds) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.sessions[sessionID] = email
+	s.sessions[sessionID] = creds
 }
 
 // Get retrieves a session by sessionID
-func (s *Sessions) Get(sessionID string) (string, bool) {
+func (s *SessionsManager) Get(sessionID string) (*MegaCreds, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	email, exists := s.sessions[sessionID]
-	return email, exists
+	creds, exists := s.sessions[sessionID]
+	return creds, exists
 }
 
 // Delete removes a session by sessionID
-func (s *Sessions) Delete(sessionID string) {
+func (s *SessionsManager) Delete(sessionID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.sessions, sessionID)
