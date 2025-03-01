@@ -274,8 +274,6 @@ func IHaveBooked(classIds []int, megaCreds *MegaCreds) ([]int, error) {
 		}
 	}
 
-	fmt.Println(bookedClasses)
-
 	return bookedClasses, nil
 }
 
