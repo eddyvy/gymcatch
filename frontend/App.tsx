@@ -38,7 +38,12 @@ function App() {
   }, [])
 
   return (
-    <Container sx={{ paddingLeft: 0, paddingRight: 0 }}>
+    <Container
+      sx={{
+        paddingLeft: '0px !important',
+        paddingRight: '0px !important',
+      }}
+    >
       <Header setIsAuthenticated={setIsAuthenticated} />
       {isAuthenticated ? (
         <Home setError={setError} setIsLoading={setIsLoading} />

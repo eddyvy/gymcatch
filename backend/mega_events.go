@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -87,6 +89,47 @@ type EventResponse struct {
 	} `json:"events"`
 }
 
+type EventInfoType struct {
+	Texts struct {
+		SoldOut   string `json:"sold_out"`
+		Unstarted string `json:"unstarted"`
+		Finished  string `json:"finished"`
+	} `json:"texts"`
+	Data []struct {
+		ID          int `json:"id"`
+		BookingInfo struct {
+			Available   bool `json:"available"`
+			TooSoon     bool `json:"too_soon"`
+			TooLate     bool `json:"too_late"`
+			SoldOut     bool `json:"sold_out"`
+			IHaveBooked bool `json:"i_have_booked"`
+			Places      struct {
+				Booked int `json:"booked"`
+				Total  int `json:"total"`
+			} `json:"places"`
+			LoginRequired bool `json:"login_required"`
+			ProductsInfo  struct {
+			} `json:"products_info"`
+			PassRequired bool `json:"pass_required"`
+		} `json:"booking_info"`
+		BookingWaitingListInfo struct {
+			Available   bool `json:"available"`
+			TooSoon     bool `json:"too_soon"`
+			TooLate     bool `json:"too_late"`
+			SoldOut     bool `json:"sold_out"`
+			IHaveBooked bool `json:"i_have_booked"`
+			Places      struct {
+				Booked            int `json:"booked"`
+				NotifiedAvailable int `json:"notified_available"`
+				Total             int `json:"total"`
+			} `json:"places"`
+			LoginRequired bool `json:"login_required"`
+			ProductsInfo  struct {
+			} `json:"products_info"`
+		} `json:"booking_waiting_list_info"`
+	} `json:"data"`
+}
+
 func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 	now := time.Now()
 	oneWeekLater := now.AddDate(0, 0, 7)
@@ -101,7 +144,7 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 		return nil, errors.New("failed to create first API request")
 	}
 	req1.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
-	req1.Header.Add("Cookie", fmt.Sprintf("_gymtoken=%s", megaCreds.authToken))
+	req1.Header.Add("Cookie", "_gymtoken="+megaCreds.authToken+"; _gymapp="+megaCreds.gymAppToken)
 
 	resp1, err := http.DefaultClient.Do(req1)
 	if err != nil {
@@ -129,7 +172,7 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 		return nil, errors.New("failed to create second API request")
 	}
 	req2.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
-	req2.Header.Add("Cookie", fmt.Sprintf("_gymtoken=%s", megaCreds.authToken))
+	req2.Header.Add("Cookie", "_gymtoken="+megaCreds.authToken+"; _gymapp="+megaCreds.gymAppToken)
 
 	resp2, err := http.DefaultClient.Do(req2)
 	if err != nil {
@@ -160,6 +203,82 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 	}, nil
 }
 
+func GetClassInfo(classIds []int, megaCreds *MegaCreds) (*EventInfoType, error) {
+	url := "https://app.gym-up.com/ws/v2/event_sessions_public/" + megaCreds.publicSession + "/booking_info"
+	method := "POST"
+
+	classIdsStr := make([]string, len(classIds))
+	for i, id := range classIds {
+		classIdsStr[i] = strconv.Itoa(id)
+	}
+
+	payload := strings.NewReader("event_session_ids=" + strings.Join(classIdsStr, ","))
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
+	req.Header.Add("Cookie", "_gymtoken="+megaCreds.authToken+"; _gymapp="+megaCreds.gymAppToken)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var eventInfo EventInfoType
+	if err := json.Unmarshal(body, &eventInfo); err != nil {
+		return nil, err
+	}
+
+	return &eventInfo, nil
+}
+
+func GetClassDate(classId int, megaCreds *MegaCreds) (*time.Time, error) {
+	events, err := FetchMegaEvents(megaCreds)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, event := range events.Events {
+		if event.SessionID == classId {
+			return &event.Hour, nil
+		}
+	}
+
+	return nil, errors.New("class not found")
+}
+
+func IHaveBooked(classIds []int, megaCreds *MegaCreds) ([]int, error) {
+	var bookedClasses []int
+
+	eventInfo, err := GetClassInfo(classIds, megaCreds)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, classId := range classIds {
+		for _, event := range eventInfo.Data {
+			if event.ID == classId && event.BookingInfo.IHaveBooked {
+				bookedClasses = append(bookedClasses, classId)
+			}
+		}
+	}
+
+	fmt.Println(bookedClasses)
+
+	return bookedClasses, nil
+}
+
 // HandleMegaEvents handles the API call to fetch event sessions and returns the concatenated JSON response
 func HandleMegaEvents(c *fiber.Ctx) error {
 	sessionID := GetSessionID(c)
@@ -176,17 +295,30 @@ func HandleMegaEvents(c *fiber.Ctx) error {
 	return c.JSON(finalResponse)
 }
 
-func GetClassDate(classId int, megaCreds *MegaCreds) (*time.Time, error) {
-	events, err := FetchMegaEvents(megaCreds)
+func HandleMegaEventsBooked(c *fiber.Ctx) error {
+	sessionID := GetSessionID(c)
+	megaCreds, _ := Sessions.Get(sessionID)
+
+	// Parse the class IDs
+	classIdsStr := c.Query("classIds")
+	if classIdsStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "missing classIds query parameter",
+		})
+	}
+	classIds := strings.Split(classIdsStr, ",")
+	classIdsInt := make([]int, len(classIds))
+	for i, id := range classIds {
+		classIdsInt[i], _ = strconv.Atoi(id)
+	}
+
+	// Get the classes that have been booked
+	bookedClasses, err := IHaveBooked(classIdsInt, megaCreds)
 	if err != nil {
-		return nil, err
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
-	for _, event := range events.Events {
-		if event.SessionID == classId {
-			return &event.Hour, nil
-		}
-	}
-
-	return nil, errors.New("class not found")
+	return c.JSON(bookedClasses)
 }

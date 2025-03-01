@@ -32,6 +32,7 @@ func main() {
 
 	api := app.Group("/api", backend.SessionMiddleware)
 	api.Get("/mega_events", backend.HandleMegaEvents)
+	api.Get("/mega_events_booked", backend.HandleMegaEventsBooked)
 	api.Post("/mega_inscribe/:classId", backend.HandleInscribe)
 	api.Get("/mega_inscribe", backend.HandleGetInscribedClasses)
 

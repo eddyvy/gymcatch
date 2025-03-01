@@ -14,11 +14,13 @@
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^6.4.6",
     "axios": "^1.8.1",
+    "luxon": "^3.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@types/luxon": "^3.4.2",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",

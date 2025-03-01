@@ -40,3 +40,57 @@ export async function getEvents(): Promise<MegaEvent[]> {
 
   return res.data?.events || []
 }
+
+export async function getInscribedEvents(): Promise<number[]> {
+  const sessionId = localStorage?.getItem('sessionId')
+  if (!sessionId) {
+    return []
+  }
+  const res = await axios.get<{ inscribedClasses: number[] }>(
+    BACKEND_HOST + '/api/mega_inscribe',
+    {
+      headers: {
+        'X-Session': sessionId,
+      },
+    }
+  )
+
+  return res.data?.inscribedClasses || []
+}
+
+export async function inscribeToEvent(classId: number): Promise<boolean> {
+  const sessionId = localStorage?.getItem('sessionId')
+  if (!sessionId) {
+    return false
+  }
+  const res = await axios.post<{ success: boolean }>(
+    BACKEND_HOST + '/api/mega_inscribe/' + classId,
+    {},
+    {
+      headers: {
+        'X-Session': sessionId,
+      },
+    }
+  )
+
+  return !!res.data?.success
+}
+
+export async function getMegaEventsBooked(
+  classIds: number[]
+): Promise<number[]> {
+  const sessionId = localStorage?.getItem('sessionId')
+  if (!sessionId) {
+    return []
+  }
+  const res = await axios.get<number[]>(
+    BACKEND_HOST + '/api/mega_events_booked?classIds=' + classIds.join(','),
+    {
+      headers: {
+        'X-Session': sessionId,
+      },
+    }
+  )
+
+  return res.data || []
+}
