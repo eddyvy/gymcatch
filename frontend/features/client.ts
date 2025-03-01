@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { MegaEvent, EventResponse } from './events'
 
 const BACKEND_HOST = import.meta.env.VITE_BACKEND_HOST || ''
 
@@ -21,4 +22,21 @@ export async function postAuth(
     }
   )
   return res.data.sessionID
+}
+
+export async function getEvents(): Promise<MegaEvent[]> {
+  const sessionId = localStorage?.getItem('sessionId')
+  if (!sessionId) {
+    return []
+  }
+  const res = await axios.get<EventResponse>(
+    BACKEND_HOST + '/api/mega_events',
+    {
+      headers: {
+        'X-Session': sessionId,
+      },
+    }
+  )
+
+  return res.data?.events || []
 }

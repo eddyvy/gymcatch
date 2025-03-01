@@ -10,10 +10,10 @@ type Props = {
 }
 
 export const Header: FC<Props> = ({ setIsAuthenticated }) => {
-  const email = localStorage.getItem('email')
+  const email = localStorage?.getItem('email')
 
   const handleLogout = () => {
-    localStorage.removeItem('sessionId')
+    localStorage?.removeItem('sessionId')
     setIsAuthenticated(false)
   }
 

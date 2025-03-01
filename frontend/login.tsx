@@ -1,51 +1,27 @@
-import { useState, useEffect, FC } from 'react'
-import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Backdrop,
-  CircularProgress,
-} from '@mui/material'
-import { getCheckSession, postAuth } from './features/client'
+import { useState, FC } from 'react'
+import { TextField, Button, Typography, Box } from '@mui/material'
+import { postAuth } from './features/client'
 
 type Props = {
   setIsAuthenticated: (value: boolean) => void
+  setIsLoading: (value: boolean) => void
+  setError: (value: string | null) => void
 }
 
-export const Login: FC<Props> = ({ setIsAuthenticated }) => {
-  const [isLoading, setIsLoading] = useState(false)
+export const Login: FC<Props> = ({
+  setIsAuthenticated,
+  setIsLoading,
+  setError,
+}) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    const sessionId = localStorage.getItem('sessionId')
-    if (sessionId) {
-      setIsLoading(true)
-      getCheckSession(sessionId)
-        .then((success) => {
-          if (success) {
-            setIsAuthenticated(true)
-          } else {
-            localStorage.removeItem('sessionId')
-            localStorage.removeItem('email')
-          }
-        })
-        .catch(() => {
-          localStorage.removeItem('sessionId')
-          localStorage.removeItem('email')
-        })
-        .finally(() => setIsLoading(false))
-    }
-  }, [])
 
   const handleLogin = () => {
     setIsLoading(true)
     postAuth(email, password)
       .then((sessionId) => {
-        localStorage.setItem('sessionId', sessionId)
-        localStorage.setItem('email', email)
+        localStorage?.setItem('sessionId', sessionId)
+        localStorage?.setItem('email', email)
         setIsAuthenticated(true)
       })
       .catch(() => {
@@ -89,16 +65,9 @@ export const Login: FC<Props> = ({ setIsAuthenticated }) => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      {error && <Typography color="error">{error}</Typography>}
       <Button type="submit" variant="contained" color="primary">
         Login
       </Button>
-      <Backdrop
-        sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
-        open={isLoading}
-      >
-        <CircularProgress color="inherit" />
-      </Backdrop>
     </Box>
   )
 }
