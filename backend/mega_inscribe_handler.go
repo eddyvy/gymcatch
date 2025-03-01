@@ -87,6 +87,13 @@ func HandleInscribe(c *fiber.Ctx) error {
 		})
 	}
 
+	if tryingToInscribeMap[megaCreds.authToken] != nil && tryingToInscribeMap[megaCreds.authToken][classId] {
+		fmt.Println(classId, "--->Already trying to inscribe")
+		return c.JSON(fiber.Map{
+			"success": false,
+		})
+	}
+
 	// Set startDate to 2 days before classDate at 20:59
 	startDate := classDate.AddDate(0, 0, -2).Add(time.Hour*20 + time.Minute*59)
 	endDate := classDate.Add(-15 * time.Minute) // End 15 minutes before class starts
