@@ -45,7 +45,7 @@ func HandleAuth(c *fiber.Ctx) error {
 		}
 
 		// New credentials
-		credsMega := NewMegaCreds(creds.Email, os.Getenv("MEGA_PASSWORD"))
+		credsMega := NewMegaCreds(creds.Email)
 		credsMega.LoadCreds()
 
 		// Save the email into the session service

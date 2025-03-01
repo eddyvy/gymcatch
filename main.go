@@ -20,6 +20,8 @@ func main() {
 
 	api := app.Group("/api", backend.SessionMiddleware)
 	api.Get("/mega_events", backend.HandleMegaEvents)
+	api.Post("/mega_inscribe/:classId", backend.HandleInscribe)
+	api.Get("/mega_inscribe", backend.HandleGetInscribedClasses)
 
 	// Serve static files from the frontend build directory
 	app.Static("/", filepath.Join("dist"))

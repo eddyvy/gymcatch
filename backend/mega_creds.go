@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
 	"sync"
 
 	"golang.org/x/net/html"
@@ -16,19 +15,19 @@ import (
 type MegaCreds struct {
 	mu            sync.RWMutex
 	email         string
-	password      string
 	publicSession string
 	csrfToken     string
 	authToken     string
+	gymAppToken   string
 }
 
-func NewMegaCreds(email, password string) *MegaCreds {
+func NewMegaCreds(email string) *MegaCreds {
 	return &MegaCreds{
 		email:         email,
-		password:      password,
 		publicSession: "",
 		csrfToken:     "",
 		authToken:     "",
+		gymAppToken:   "",
 	}
 }
 
@@ -48,7 +47,7 @@ func (m *MegaCreds) LoadCreds() error {
 	if err != nil {
 		return err
 	}
-	authToken, err := getAuthToken(sessionID, csrfToken, m.email)
+	authToken, gymAppToken, err := getAuthTokens(sessionID, csrfToken, m.email)
 	if err != nil {
 		return err
 	}
@@ -56,6 +55,7 @@ func (m *MegaCreds) LoadCreds() error {
 	m.publicSession = sessionID
 	m.csrfToken = csrfToken
 	m.authToken = authToken
+	m.gymAppToken = gymAppToken
 
 	return nil
 }
@@ -68,12 +68,12 @@ func (m *MegaCreds) RemoveCreds() {
 	m.csrfToken = ""
 }
 
-func (m *MegaCreds) GetCreds() (string, string, string, error) {
+func (m *MegaCreds) GetCreds() (string, string, string, string, error) {
 	err := m.LoadCreds()
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
-	return m.publicSession, m.csrfToken, m.authToken, nil
+	return m.publicSession, m.csrfToken, m.authToken, m.gymAppToken, nil
 }
 
 // extractSessionID extracts the session ID from the HTML
@@ -192,36 +192,47 @@ type MegaCredsLoginResponse struct {
 	} `json:"user"`
 }
 
-func getAuthToken(publicSession, csrfToken, email string) (string, error) {
+func getAuthTokens(publicSession, csrfToken, email string) (string, string, error) {
 	url := "https://app.gym-up.com/ws/v2/event_sessions_public/" + publicSession + "/login"
-	payload := strings.NewReader("email=" + email + "&password=" + os.Getenv("PASSWORD"))
+	payload := strings.NewReader("email=" + email + "&password=" + os.Getenv("MEGA_PASSWORD"))
 
 	req, err := http.NewRequest("POST", url, payload)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("X-Csrf-Token", csrfToken)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to fetch URL: %s", resp.Status)
+		return "", "", fmt.Errorf("failed to fetch URL: %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	var loginResponse MegaCredsLoginResponse
 	if err := json.Unmarshal(body, &loginResponse); err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return loginResponse.User.AccessToken, nil
+	// Get the Set-Cookie headers
+	cookies := resp.Header["Set-Cookie"]
+	var gymAppToken string
+	for _, cookie := range cookies {
+		if strings.Contains(cookie, "_gymapp") {
+			parts := strings.Split(cookie, ";")
+			gymAppToken = strings.Split(parts[0], "_gymapp=")[1]
+			break
+		}
+	}
+
+	return loginResponse.User.AccessToken, gymAppToken, nil
 }
