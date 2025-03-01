@@ -141,6 +141,7 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 	// First API call
 	req1, err := http.NewRequest("GET", url1, nil)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to create first API request")
 	}
 	req1.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
@@ -148,27 +149,32 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 
 	resp1, err := http.DefaultClient.Do(req1)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to make first API call")
 	}
 	defer resp1.Body.Close()
 
 	if resp1.StatusCode != http.StatusOK {
+		fmt.Println(err)
 		return nil, fmt.Errorf("failed to fetch URL1: %s", resp1.Status)
 	}
 
 	body1, err := io.ReadAll(resp1.Body)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to read response body from first API call")
 	}
 
 	var eventResponse1 EventResponse
 	if err := json.Unmarshal(body1, &eventResponse1); err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to unmarshal JSON from first API call")
 	}
 
 	// Second API call
 	req2, err := http.NewRequest("GET", url2, nil)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to create second API request")
 	}
 	req2.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
@@ -176,21 +182,25 @@ func FetchMegaEvents(megaCreds *MegaCreds) (*EventResponse, error) {
 
 	resp2, err := http.DefaultClient.Do(req2)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to make second API call")
 	}
 	defer resp2.Body.Close()
 
 	if resp2.StatusCode != http.StatusOK {
+		fmt.Println(err)
 		return nil, fmt.Errorf("failed to fetch URL2: %s", resp2.Status)
 	}
 
 	body2, err := io.ReadAll(resp2.Body)
 	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to read response body from second API call")
 	}
 
 	var eventResponse2 EventResponse
 	if err := json.Unmarshal(body2, &eventResponse2); err != nil {
+		fmt.Println(err)
 		return nil, errors.New("failed to unmarshal JSON from second API call")
 	}
 
@@ -218,6 +228,7 @@ func GetClassInfo(classIds []int, megaCreds *MegaCreds) (*EventInfoType, error) 
 	req, err := http.NewRequest(method, url, payload)
 
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	req.Header.Add("X-Csrf-Token", megaCreds.csrfToken)
@@ -232,11 +243,13 @@ func GetClassInfo(classIds []int, megaCreds *MegaCreds) (*EventInfoType, error) 
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 
 	var eventInfo EventInfoType
 	if err := json.Unmarshal(body, &eventInfo); err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 
