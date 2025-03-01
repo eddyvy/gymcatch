@@ -9,7 +9,10 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-var interval = 30 * time.Second
+const INTERVAL = 30 * time.Second
+const START_HOUR time.Duration = 20
+const START_MIN time.Duration = 59
+
 var tryingToInscribeMap = make(map[string]map[int]bool)
 
 func StartCronInscribe(classId int, megaCreds *MegaCreds, startDate, endDate time.Time) {
@@ -53,11 +56,16 @@ func StartCronInscribe(classId int, megaCreds *MegaCreds, startDate, endDate tim
 
 	tryingToInscribeMap[megaCreds.authToken][classId] = true
 
-	// Add the job to the cron scheduler
-	c.AddFunc(fmt.Sprintf("@every %s", interval), job)
-
-	// Start the cron scheduler
-	c.Start()
+	if time.Now().Before(startDate) {
+		time.AfterFunc(time.Until(startDate), func() {
+			c := cron.New()
+			c.AddFunc(fmt.Sprintf("@every %s", INTERVAL), job)
+			c.Start()
+		})
+	} else {
+		c.AddFunc(fmt.Sprintf("@every %s", INTERVAL), job)
+		c.Start()
+	}
 }
 
 // RequestBody represents the structure of the request body
@@ -95,7 +103,7 @@ func HandleInscribe(c *fiber.Ctx) error {
 	}
 
 	// Set startDate to 2 days before classDate at 20:59
-	startDate := classDate.AddDate(0, 0, -2).Add(time.Hour*20 + time.Minute*59)
+	startDate := classDate.AddDate(0, 0, -2).Add(START_HOUR*time.Hour + START_MIN*time.Minute)
 	endDate := classDate.Add(-15 * time.Minute) // End 15 minutes before class starts
 
 	if time.Now().After(endDate) {

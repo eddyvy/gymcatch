@@ -65,6 +65,7 @@ func MegaInscribe(classId int, megaCreds *MegaCreds) bool {
 	}
 
 	if eventInfo.Data[0].BookingInfo.IHaveBooked {
+		fmt.Println(classId, "--->Already booked it")
 		return true
 	}
 
@@ -75,9 +76,10 @@ func MegaInscribe(classId int, megaCreds *MegaCreds) bool {
 			return false
 		}
 		return true
+	} else {
+		fmt.Println(classId, "--->Class not available")
+		return false
 	}
-
-	return false
 }
 
 func GetClassInfo(classId int, megaCreds *MegaCreds) (*EventInfoType, error) {
@@ -119,8 +121,12 @@ type ResponseInscribe struct {
 	Success bool `json:"success"`
 }
 
+type ResponseInscribeError struct {
+	Success bool     `json:"success"`
+	Errors  []string `json:"errors"`
+}
+
 func InscribeToClass(classId int, megaCreds *MegaCreds) error {
-	fmt.Println("INSC", classId, megaCreds)
 	url := "https://app.gym-up.com/api/v1/bookings"
 	method := "POST"
 
@@ -150,16 +156,18 @@ func InscribeToClass(classId int, megaCreds *MegaCreds) error {
 		return err
 	}
 
-	fmt.Println("INSC RESPONSE status", res.Status)
-	fmt.Println("INSC RESPONSE", string(body))
-
 	var response ResponseInscribe
 	if err := json.Unmarshal(body, &response); err != nil {
 		return err
 	}
 
 	if !response.Success {
-		return fmt.Errorf("failed to inscribe to class")
+		var responseError ResponseInscribeError
+		if err := json.Unmarshal(body, &responseError); err != nil {
+			return fmt.Errorf("failed to inscribe to class: %v", responseError.Errors)
+		} else {
+			return fmt.Errorf("failed to inscribe to class")
+		}
 	}
 
 	return nil
