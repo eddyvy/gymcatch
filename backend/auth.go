@@ -62,3 +62,12 @@ func HandleAuth(c *fiber.Ctx) error {
 		"error": "invalid credentials",
 	})
 }
+
+func HandleCheckSession(c *fiber.Ctx) error {
+	sessionID := c.Params("session")
+	_, exists := Sessions.Get(sessionID)
+
+	return c.JSON(fiber.Map{
+		"success": exists,
+	})
+}

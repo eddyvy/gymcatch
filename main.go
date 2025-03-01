@@ -17,6 +17,7 @@ func main() {
 
 	// Handle login
 	app.Post("/api/auth", backend.HandleAuth)
+	app.Get("/api/check_session/:session", backend.HandleCheckSession)
 
 	api := app.Group("/api", backend.SessionMiddleware)
 	api.Get("/mega_events", backend.HandleMegaEvents)
