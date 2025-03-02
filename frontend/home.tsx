@@ -7,6 +7,12 @@ import {
   FormControl,
   InputLabel,
   Tooltip,
+  TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material'
 import { FC, useEffect, useState, useMemo } from 'react'
 import {
@@ -28,6 +34,9 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
   const [inscribedEvents, setInscribedEvents] = useState<number[]>([])
   const [eventsBooked, setEventsBooked] = useState<number[]>([])
   const [selectedDate, setSelectedDate] = useState<string>('')
+  const [search, setSearch] = useState<string>('padel')
+  const [open, setOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<MegaEvent | null>(null)
 
   useEffect(() => {
     setIsLoading(true)
@@ -65,6 +74,23 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
       })
   }
 
+  const handleClickOpen = (event: MegaEvent) => () => {
+    setSelectedEvent(event)
+    setOpen(true)
+  }
+
+  const handleClose = () => {
+    setOpen(false)
+    setSelectedEvent(null)
+  }
+
+  const handleConfirm = () => {
+    if (selectedEvent !== null) {
+      handleInscribe(selectedEvent.session_id)()
+    }
+    handleClose()
+  }
+
   const uniqueDates = useMemo(() => {
     return Array.from(new Set(events.map((event) => event.hour.split('T')[0])))
       .map((e) => DateTime.fromFormat(e, 'yyyy-MM-dd'))
@@ -77,12 +103,16 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
   }, [events])
 
   const filteredEvents = useMemo(() => {
-    return events.filter(
-      (event) =>
-        DateTime.fromISO(event.hour).toFormat('yyyy-MM-dd') === selectedDate &&
-        DateTime.fromISO(event.hour) >= DateTime.now()
-    )
-  }, [events, selectedDate])
+    return events
+      .filter(
+        (event) =>
+          DateTime.fromISO(event.hour).toFormat('yyyy-MM-dd') ===
+            selectedDate && DateTime.fromISO(event.hour) >= DateTime.now()
+      )
+      .filter((event) =>
+        event.activity_name.toUpperCase().includes(search.toUpperCase())
+      )
+  }, [events, selectedDate, search])
 
   useEffect(() => {
     if (filteredEvents.length === 0) {
@@ -119,6 +149,13 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
               </MenuItem>
             ))}
           </Select>
+          <TextField
+            sx={{ mt: 2 }}
+            label="Buscar"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            fullWidth
+          />
         </FormControl>
       </Box>
       <Box sx={{ p: 2 }}>
@@ -136,7 +173,7 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
               <Button
                 variant="outlined"
                 color="primary"
-                onClick={handleInscribe(event.session_id)}
+                onClick={handleClickOpen(event)}
                 fullWidth
                 style={{ marginBottom: '10px' }}
                 disabled={isBooked(event.session_id)}
@@ -155,6 +192,38 @@ export const Home: FC<Props> = ({ setError, setIsLoading }) => {
           </Tooltip>
         ))}
       </Box>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">
+          Confirmar Inscripción
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            {selectedEvent && (
+              <Typography align="center">
+                <strong>{selectedEvent.activity_name}</strong> a las{' '}
+                <strong>
+                  {DateTime.fromISO(selectedEvent.start).toFormat('HH:mm')}
+                </strong>
+              </Typography>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', mb: 2 }}>
+          <Button
+            onClick={handleConfirm}
+            color="primary"
+            autoFocus
+            variant="contained"
+          >
+            Confirmar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
