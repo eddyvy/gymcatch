@@ -57,12 +57,14 @@ func StartCronInscribe(classId int, megaCreds *MegaCreds, startDate, endDate tim
 	tryingToInscribeMap[megaCreds.authToken][classId] = true
 
 	if time.Now().Before(startDate) {
+		fmt.Println(classId, "--->Job scheduled to start at", startDate)
 		time.AfterFunc(time.Until(startDate), func() {
 			c := cron.New()
 			c.AddFunc(fmt.Sprintf("@every %s", INTERVAL), job)
 			c.Start()
 		})
 	} else {
+		fmt.Println(classId, "--->Job started")
 		c.AddFunc(fmt.Sprintf("@every %s", INTERVAL), job)
 		c.Start()
 	}
@@ -103,7 +105,7 @@ func HandleInscribe(c *fiber.Ctx) error {
 	}
 
 	// Set startDate to 2 days before classDate at 20:59
-	startDate := classDate.AddDate(0, 0, -2).Add(START_HOUR*time.Hour + START_MIN*time.Minute)
+	startDate := classDate.AddDate(0, 0, -2).Truncate(24 * time.Hour).Add(START_HOUR*time.Hour + START_MIN*time.Minute)
 	endDate := classDate.Add(-15 * time.Minute) // End 15 minutes before class starts
 
 	if time.Now().After(endDate) {
